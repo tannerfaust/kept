@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		C2A9A8792FBD2F6D004CCA91 /* Defy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Defy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1F000102FBD700000000001 /* DefyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DefyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +17,22 @@
 			path = Defy;
 			sourceTree = "<group>";
 		};
+		D1F000112FBD700000000001 /* DefyTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = DefyTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		C2A9A8762FBD2F6D004CCA91 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1F000122FBD700000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +46,7 @@
 			isa = PBXGroup;
 			children = (
 				C2A9A87B2FBD2F6D004CCA91 /* Defy */,
+				D1F000112FBD700000000001 /* DefyTests */,
 				C2A9A87A2FBD2F6D004CCA91 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +55,7 @@
 			isa = PBXGroup;
 			children = (
 				C2A9A8792FBD2F6D004CCA91 /* Defy.app */,
+				D1F000102FBD700000000001 /* DefyTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,7 +85,48 @@
 			productReference = C2A9A8792FBD2F6D004CCA91 /* Defy.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D1F000132FBD700000000001 /* DefyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1F000192FBD700000000001 /* Build configuration list for PBXNativeTarget "DefyTests" */;
+			buildPhases = (
+				D1F000142FBD700000000001 /* Sources */,
+				D1F000122FBD700000000001 /* Frameworks */,
+				D1F000152FBD700000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D1F000162FBD700000000001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D1F000112FBD700000000001 /* DefyTests */,
+			);
+			name = DefyTests;
+			packageProductDependencies = (
+			);
+			productName = DefyTests;
+			productReference = D1F000102FBD700000000001 /* DefyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		D1F000162FBD700000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C2A9A8782FBD2F6D004CCA91 /* Defy */;
+			targetProxy = D1F000172FBD700000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		D1F000172FBD700000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C2A9A8712FBD2F6D004CCA91 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2A9A8782FBD2F6D004CCA91;
+			remoteInfo = Defy;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		C2A9A8712FBD2F6D004CCA91 /* Project object */ = {
@@ -82,6 +138,10 @@
 				TargetAttributes = {
 					C2A9A8782FBD2F6D004CCA91 = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					D1F000132FBD700000000001 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = C2A9A8782FBD2F6D004CCA91;
 					};
 				};
 			};
@@ -100,6 +160,7 @@
 			projectRoot = "";
 			targets = (
 				C2A9A8782FBD2F6D004CCA91 /* Defy */,
+				D1F000132FBD700000000001 /* DefyTests */,
 			);
 		};
 /* End PBXProject section */
@@ -112,10 +173,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D1F000152FBD700000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		C2A9A8752FBD2F6D004CCA91 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1F000142FBD700000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -323,6 +398,60 @@
 			};
 			name = Release;
 		};
+		D1F0001A2FBD700000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.DefyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Defy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Defy";
+			};
+			name = Debug;
+		};
+		D1F0001B2FBD700000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.DefyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Defy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Defy";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -340,6 +469,15 @@
 			buildConfigurations = (
 				C2A9A8852FBD2F6E004CCA91 /* Debug */,
 				C2A9A8862FBD2F6E004CCA91 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D1F000192FBD700000000001 /* Build configuration list for PBXNativeTarget "DefyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1F0001A2FBD700000000001 /* Debug */,
+				D1F0001B2FBD700000000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

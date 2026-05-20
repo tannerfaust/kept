@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct DefyApp: App {
+    @StateObject private var store = DefyStore()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(store)
         }
     }
 }
