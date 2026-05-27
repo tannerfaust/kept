@@ -2005,14 +2005,23 @@ struct FriendsView: View {
         NavigationStack {
             List {
                 Section("Add friend") {
-                    HStack {
+                    HStack(spacing: 8) {
                         TextField("@handle", text: $handle)
                             .textInputAutocapitalization(.never)
+                        Button("Find") {
+                            store.findFriend(handle: handle)
+                        }
+                        .disabled(handle.isEmpty)
                         Button("Add") {
                             store.sendFriendRequest(handle: handle)
                             handle = ""
                         }
                         .disabled(handle.isEmpty)
+                    }
+                    if !store.friendStatusMessage.isEmpty {
+                        Text(store.friendStatusMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 

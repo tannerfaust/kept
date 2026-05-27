@@ -58,12 +58,16 @@ protocol KeptBackendService {
     func restoreSession() async throws -> UserProfile?
     func fetchProfile(userID: UUID) async throws -> UserProfile
     func ensureProfile(for session: SupabaseSession) async throws -> UserProfile
+    func findProfile(handle: String) async throws -> UserProfile?
     func fetchFriends(userID: UUID) async throws -> [KeptFriend]
+    func sendFriendRequest(handle: String) async throws -> KeptFriend
+    func acceptFriendRequest(_ friend: KeptFriend) async throws -> KeptFriend
     func fetchPacts(userID: UUID) async throws -> [Pact]
     func fetchCheckIns(userID: UUID) async throws -> [CheckIn]
     func fetchPactMessages(userID: UUID) async throws -> [PactMessage]
     func createPact(_ pact: Pact) async throws
     func submitCheckIn(_ checkIn: CheckIn) async throws
+    func deleteCheckIn(pactID: UUID, userID: UUID, day: Date) async throws
     func postPactMessage(_ message: PactMessage) async throws
     func updateProfile(_ profile: UserProfile) async throws
     func uploadAvatarImage(_ data: Data, userID: UUID) async throws -> URL
@@ -170,6 +174,15 @@ final class SupabaseService: KeptBackendService {
         return profile
     }
 
+    func findProfile(handle: String) async throws -> UserProfile? {
+        let rows: [ProfileRow] = try await rpcRequest(
+            function: "find_profile_by_handle",
+            method: "POST",
+            body: HandleRequest(searchHandle: handle)
+        )
+        return rows.first?.model
+    }
+
     func fetchFriends(userID: UUID) async throws -> [KeptFriend] {
         let rows: [FriendshipRow] = try await restRequest(
             path: "friendships",
@@ -194,6 +207,30 @@ final class SupabaseService: KeptBackendService {
             }
             return KeptFriend(id: row.id, profile: profile, status: row.status, pendingDirection: direction)
         }
+    }
+
+    func sendFriendRequest(handle: String) async throws -> KeptFriend {
+        guard let userID = currentSession?.userID else { throw SupabaseError.unauthenticated }
+        let row: FriendshipRow = try await rpcRequest(
+            function: "send_friend_request",
+            method: "POST",
+            body: HandleRequest(searchHandle: handle)
+        )
+        let otherID = row.requesterID == userID ? row.addresseeID : row.requesterID
+        let profile = try await fetchProfile(userID: otherID)
+        return KeptFriend(id: row.id, profile: profile, status: row.status, pendingDirection: row.requesterID == userID ? .outgoing : .incoming)
+    }
+
+    func acceptFriendRequest(_ friend: KeptFriend) async throws -> KeptFriend {
+        guard let userID = currentSession?.userID else { throw SupabaseError.unauthenticated }
+        let row: FriendshipRow = try await rpcRequest(
+            function: "accept_friend_request",
+            method: "POST",
+            body: FriendshipIDRequest(friendshipID: friend.id)
+        )
+        let otherID = row.requesterID == userID ? row.addresseeID : row.requesterID
+        let profile = try await fetchProfile(userID: otherID)
+        return KeptFriend(id: row.id, profile: profile, status: row.status, pendingDirection: nil)
     }
 
     func fetchPacts(userID: UUID) async throws -> [Pact] {
@@ -230,10 +267,14 @@ final class SupabaseService: KeptBackendService {
     }
 
     func fetchCheckIns(userID: UUID) async throws -> [CheckIn] {
+        let pacts = try await fetchPacts(userID: userID)
+        let pactIDs = pacts.map(\.id)
+        guard !pactIDs.isEmpty else { return [] }
+
         let rows: [CheckInRow] = try await restRequest(
             path: "check_ins",
             queryItems: [
-                URLQueryItem(name: "user_id", value: "eq.\(userID.uuidString.lowercased())"),
+                URLQueryItem(name: "pact_id", value: "in.(\(pactIDs.map { $0.uuidString.lowercased() }.joined(separator: ",")))"),
                 URLQueryItem(name: "select", value: "*")
             ],
             method: "GET",
@@ -290,6 +331,19 @@ final class SupabaseService: KeptBackendService {
             queryItems: [URLQueryItem(name: "on_conflict", value: "check_in_id,condition_id")],
             method: "POST",
             body: values
+        )
+    }
+
+    func deleteCheckIn(pactID: UUID, userID: UUID, day: Date) async throws {
+        let _: EmptyResponse = try await restRequest(
+            path: "check_ins",
+            queryItems: [
+                URLQueryItem(name: "pact_id", value: "eq.\(pactID.uuidString.lowercased())"),
+                URLQueryItem(name: "user_id", value: "eq.\(userID.uuidString.lowercased())"),
+                URLQueryItem(name: "day", value: "eq.\(DateFormatter.keptDateOnly.string(from: day))")
+            ],
+            method: "DELETE",
+            body: Optional<EmptyBody>.none
         )
     }
 
@@ -456,6 +510,15 @@ final class SupabaseService: KeptBackendService {
         return try await request(basePath: "auth/v1/\(path)", queryItems: queryItems, method: method, body: body, bearerToken: bearerToken)
     }
 
+    private func rpcRequest<Body: Encodable, Response: Decodable>(
+        function: String,
+        method: String,
+        body: Body?
+    ) async throws -> Response {
+        guard let token = try await validAccessToken() else { throw SupabaseError.unauthenticated }
+        return try await request(basePath: "rest/v1/rpc/\(function)", queryItems: [], method: method, body: body, bearerToken: token)
+    }
+
     private func request<Body: Encodable, Response: Decodable>(
         basePath: String,
         queryItems: [URLQueryItem],
@@ -535,6 +598,14 @@ private struct MagicLinkRequest: Encodable {
 
 private struct RefreshTokenRequest: Encodable {
     let refreshToken: String
+}
+
+private struct HandleRequest: Encodable {
+    let searchHandle: String
+}
+
+private struct FriendshipIDRequest: Encodable {
+    let friendshipID: UUID
 }
 
 private struct TokenResponse: Decodable {

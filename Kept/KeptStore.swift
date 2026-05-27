@@ -13,6 +13,7 @@ final class KeptStore: ObservableObject {
     @Published var isSupabaseConfigured = SupabaseConfiguration.current.isConfigured
     @Published var isAuthBusy = false
     @Published var authStatusMessage = ""
+    @Published var friendStatusMessage = ""
     @Published var localAvatarData: Data?
 
     static let demoUserID = UUID(uuidString: "A1111111-1111-4111-8111-111111111111")!
@@ -287,13 +288,20 @@ final class KeptStore: ObservableObject {
     }
 
     func sendFriendRequest(handle: String) {
-        let cleanHandle = handle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanHandle.isEmpty else { return }
+        guard let normalizedHandle = ProfileHandleValidator.normalized(handle) else {
+            friendStatusMessage = "Use a valid @handle."
+            return
+        }
+
+        if isSupabaseConfigured, !isCurrentUserDemo {
+            Task { await sendLiveFriendRequest(handle: normalizedHandle) }
+            return
+        }
 
         let profile = UserProfile(
             id: UUID(),
-            displayName: cleanHandle.replacingOccurrences(of: "@", with: "").capitalized,
-            handle: cleanHandle.hasPrefix("@") ? cleanHandle : "@\(cleanHandle)",
+            displayName: normalizedHandle.replacingOccurrences(of: "@", with: "").capitalized,
+            handle: normalizedHandle,
             bio: "Invited to your accountability circle.",
             avatarSymbol: "sparkles",
             avatarURL: nil,
@@ -307,11 +315,79 @@ final class KeptStore: ObservableObject {
         addNotification(title: "Friend request sent", message: "\(profile.displayName) will appear in your pacts when they accept.")
     }
 
+    func findFriend(handle: String) {
+        guard let normalizedHandle = ProfileHandleValidator.normalized(handle) else {
+            friendStatusMessage = "Use a valid @handle."
+            return
+        }
+
+        if isSupabaseConfigured, !isCurrentUserDemo {
+            Task { await findLiveFriend(handle: normalizedHandle) }
+            return
+        }
+
+        friendStatusMessage = "Demo mode can add a pending friend request, but live search needs Supabase."
+    }
+
     func acceptFriend(_ friend: KeptFriend) {
+        if isSupabaseConfigured, !isCurrentUserDemo {
+            Task { await acceptLiveFriend(friend) }
+            return
+        }
+
         guard let index = friends.firstIndex(where: { $0.id == friend.id }) else { return }
         friends[index].status = .accepted
         friends[index].pendingDirection = nil
         addNotification(title: "Friend added", message: "\(friends[index].profile.displayName) can now join pacts with you.")
+    }
+
+    private func findLiveFriend(handle: String) async {
+        friendStatusMessage = "Searching..."
+        do {
+            guard let profile = try await backend.findProfile(handle: handle) else {
+                friendStatusMessage = "No user found for \(handle)."
+                return
+            }
+            if profile.id == currentUser?.id {
+                friendStatusMessage = "That is your own handle."
+            } else if friends.contains(where: { $0.profile.id == profile.id }) {
+                friendStatusMessage = "\(profile.displayName) is already in your network."
+            } else {
+                friendStatusMessage = "Found \(profile.displayName). Tap Add to send a request."
+            }
+        } catch {
+            friendStatusMessage = error.localizedDescription
+        }
+    }
+
+    private func sendLiveFriendRequest(handle: String) async {
+        friendStatusMessage = "Sending request..."
+        do {
+            let friend = try await backend.sendFriendRequest(handle: handle)
+            if let index = friends.firstIndex(where: { $0.id == friend.id || $0.profile.id == friend.profile.id }) {
+                friends[index] = friend
+            } else {
+                friends.insert(friend, at: 0)
+            }
+            friendStatusMessage = "Friend request sent to \(friend.profile.displayName)."
+            addNotification(title: "Friend request sent", message: "\(friend.profile.displayName) can accept your request now.")
+        } catch {
+            friendStatusMessage = error.localizedDescription
+        }
+    }
+
+    private func acceptLiveFriend(_ friend: KeptFriend) async {
+        friendStatusMessage = "Accepting request..."
+        do {
+            let updatedFriend = try await backend.acceptFriendRequest(friend)
+            if let index = friends.firstIndex(where: { $0.id == updatedFriend.id }) {
+                friends[index] = updatedFriend
+            }
+            friendStatusMessage = "\(updatedFriend.profile.displayName) is now a friend."
+            addNotification(title: "Friend added", message: "\(updatedFriend.profile.displayName) can now join pacts with you.")
+        } catch {
+            friendStatusMessage = error.localizedDescription
+        }
     }
 
     func createPact(draft: PactDraft) {
@@ -494,6 +570,16 @@ final class KeptStore: ObservableObject {
         }
         self.currentUser?.integrityScore = integrity.score
         addNotification(title: "Check-in unlocked", message: "\(pact.title) is open for edit.")
+
+        if isSupabaseConfigured, !isCurrentUserDemo {
+            Task {
+                do {
+                    try await backend.deleteCheckIn(pactID: pact.id, userID: currentUser.id, day: date)
+                } catch {
+                    addNotification(title: "Unlock sync failed", message: error.localizedDescription, pactID: pact.id)
+                }
+            }
+        }
 
         postSystemMessage(pactID: pact.id, text: "🔓 \(currentUser.displayName) unlocked today's check-in for editing.")
     }
