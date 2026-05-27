@@ -1,23 +1,35 @@
 import Foundation
 import SwiftUI
 
-enum PactCore: String, Codable, CaseIterable, Identifiable {
-    case reactive
-    case proactive
+enum ConditionType: String, Codable, CaseIterable, Identifiable {
+    case todo = "todo"
+    case avoid = "avoid"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .reactive: "Reactive"
-        case .proactive: "Proactive"
+        case .todo: "To-Do"
+        case .avoid: "Avoid"
         }
     }
 
     var symbol: String {
         switch self {
-        case .reactive: "checkmark.seal.fill"
-        case .proactive: "exclamationmark.triangle.fill"
+        case .todo: "checkmark.circle.fill"
+        case .avoid: "shield.fill"
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let str = try container.decode(String.self).lowercased()
+        if str == "proactive" || str == "todo" {
+            self = .todo
+        } else if str == "reactive" || str == "avoid" {
+            self = .avoid
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown condition type: \(str)")
         }
     }
 }
@@ -54,7 +66,7 @@ enum FriendshipStatus: String, Codable {
 
 enum ComparisonOperator: String, Codable, CaseIterable, Identifiable {
     case equals
-    case atLeast
+    case atLeast = "at_least"
 
     var id: String { rawValue }
 }
@@ -73,7 +85,7 @@ struct UserProfile: Identifiable, Codable, Equatable, Hashable {
     var completionRate: Double
 }
 
-struct DefyFriend: Identifiable, Codable, Equatable, Hashable {
+struct KeptFriend: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var profile: UserProfile
     var status: FriendshipStatus
@@ -95,18 +107,27 @@ struct PactParticipant: Identifiable, Codable, Equatable, Hashable {
 struct PactCondition: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var title: String
+    var type: ConditionType
     var inputType: PactInputType
     var comparison: ComparisonOperator
     var targetValue: Int
     var isRequired: Bool
 
-    func passes(value: Int?) -> Bool {
-        guard let value else { return false }
-        switch comparison {
-        case .equals:
-            return value == targetValue
-        case .atLeast:
-            return value >= targetValue
+    func isSatisfied(value: Int?) -> Bool {
+        let val = value ?? 0
+        switch type {
+        case .todo:
+            if inputType == .boolean {
+                return val == 1
+            } else {
+                return val >= targetValue
+            }
+        case .avoid:
+            if inputType == .boolean {
+                return val == 0 // Clean (no violation)
+            } else {
+                return val <= targetValue // slips within max allowed limit
+            }
         }
     }
 }
@@ -117,7 +138,8 @@ struct Pact: Identifiable, Codable, Equatable, Hashable {
     var description: String
     var startDate: Date
     var finishDate: Date
-    var core: PactCore
+    var iconSymbol: String
+    var accentColorHex: String
     var status: PactStatus
     var participants: [PactParticipant]
     var conditions: [PactCondition]
@@ -139,6 +161,16 @@ struct Pact: Identifiable, Codable, Equatable, Hashable {
     }
 }
 
+struct PactMessage: Identifiable, Codable, Equatable, Hashable {
+    let id: UUID
+    let pactID: UUID
+    let senderID: UUID
+    let senderName: String
+    let senderAccentColorHex: String
+    let text: String
+    let createdAt: Date
+}
+
 struct CheckInValue: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var conditionID: UUID
@@ -155,7 +187,7 @@ struct CheckIn: Identifiable, Codable, Equatable, Hashable {
     var values: [CheckInValue]
 }
 
-struct DefyNotification: Identifiable, Codable, Equatable, Hashable {
+struct KeptNotification: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var title: String
     var message: String
@@ -209,19 +241,67 @@ enum ProfileHandleValidator {
 
 enum PactEvaluator {
     static func dayPassed(pact: Pact, checkIn: CheckIn?, on day: Date = Date()) -> Bool {
-        switch pact.core {
-        case .reactive:
-            guard let checkIn else { return false }
-            return requiredConditionsPass(pact: pact, checkIn: checkIn)
-        case .proactive:
-            guard let checkIn else { return true }
-            return !checkIn.didReportViolation
+        let hasTodo = pact.conditions.contains(where: { $0.type == .todo })
+        guard let checkIn else {
+            // Missing check-in counts as violation/failed if there are active To-Do conditions,
+            // otherwise (pure reactive boundary) it is clean.
+            return !hasTodo
         }
+        if checkIn.didReportViolation {
+            return false
+        }
+        return pact.conditions.allSatisfy { condition in
+            let val = checkIn.values.first { $0.conditionID == condition.id }?.integerValue
+            return condition.isSatisfied(value: val)
+        }
+    }
+
+    static func dayKeepPercentage(pact: Pact, checkIn: CheckIn?) -> Double {
+        guard let checkIn else {
+            let hasTodo = pact.conditions.contains(where: { $0.type == .todo })
+            return hasTodo ? 0.0 : 1.0
+        }
+        if checkIn.didReportViolation {
+            return 0.0
+        }
+        guard !pact.conditions.isEmpty else { return 1.0 }
+        let satisfiedCount = pact.conditions.filter { condition in
+            let val = checkIn.values.first { $0.conditionID == condition.id }?.integerValue
+            return condition.isSatisfied(value: val)
+        }.count
+        return Double(satisfiedCount) / Double(pact.conditions.count)
+    }
+
+    static func statusTextAndColor(for percent: Double) -> (text: String, color: Color) {
+        let pct = Int(round(percent * 100))
+        if pct == 100 {
+            return ("WORD KEPT", KeptColor.green)
+        } else if pct == 0 {
+            return ("PACT BROKEN", KeptColor.coral)
+        } else {
+            let color: Color
+            if percent >= 0.75 {
+                color = KeptColor.citron
+            } else if percent >= 0.33 {
+                color = Color(red: 1.0, green: 0.8, blue: 0.0) // Amber Yellow
+            } else {
+                color = Color.orange
+            }
+            return ("KEPT \(pct)%", color)
+        }
+    }
+
+    static func statusTextAndColor(pact: Pact, checkIn: CheckIn?) -> (text: String, color: Color) {
+        guard let checkIn else {
+            return ("Open", Color.black.opacity(0.4))
+        }
+        let percent = dayKeepPercentage(pact: pact, checkIn: checkIn)
+        return statusTextAndColor(for: percent)
     }
 
     static func integrityScore(for pacts: [Pact], checkIns: [CheckIn], userID: UUID, calendar: Calendar = .current) -> IntegritySnapshot {
         var expected = 0
-        var completed = 0
+        var completedFraction: Double = 0.0
         let today = calendar.startOfDay(for: Date())
 
         for pact in pacts where pact.participants.contains(where: { $0.profile.id == userID }) {
@@ -238,9 +318,7 @@ enum PactEvaluator {
                         && $0.userID == userID
                         && calendar.isDate($0.day, inSameDayAs: day)
                 }
-                if dayPassed(pact: pact, checkIn: checkIn, on: day) {
-                    completed += 1
-                }
+                completedFraction += dayKeepPercentage(pact: pact, checkIn: checkIn)
             }
         }
 
@@ -248,12 +326,13 @@ enum PactEvaluator {
             return IntegritySnapshot(score: 1, completedUnits: 0, expectedUnits: 0, activePacts: pacts.filter(\.isActiveToday).count, missedDays: 0)
         }
 
+        let completedInt = Int(round(completedFraction))
         return IntegritySnapshot(
-            score: Double(completed) / Double(expected),
-            completedUnits: completed,
+            score: completedFraction / Double(expected),
+            completedUnits: completedInt,
             expectedUnits: expected,
             activePacts: pacts.filter(\.isActiveToday).count,
-            missedDays: expected - completed
+            missedDays: expected - completedInt
         )
     }
 
@@ -275,14 +354,7 @@ enum PactEvaluator {
         )
     }
 
-    private static func requiredConditionsPass(pact: Pact, checkIn: CheckIn) -> Bool {
-        let required = pact.conditions.filter(\.isRequired)
-        guard !required.isEmpty else { return true }
-        return required.allSatisfy { condition in
-            let submitted = checkIn.values.first { $0.conditionID == condition.id }?.integerValue
-            return condition.passes(value: submitted)
-        }
-    }
+
 
     private static func streaksForProfile(pacts: [Pact], checkIns: [CheckIn], userID: UUID, calendar: Calendar) -> (current: Int, best: Int) {
         let today = calendar.startOfDay(for: Date())
@@ -357,5 +429,77 @@ enum PactEvaluator {
                     isPositive: !checkIn.didReportViolation
                 )
             }
+    }
+
+    static func pactFullyCompleted(pact: Pact, checkIns: [CheckIn], userID: UUID, calendar: Calendar = .current) -> Bool {
+        let today = calendar.startOfDay(for: Date())
+        let start = calendar.startOfDay(for: pact.startDate)
+        guard start <= today else { return false }
+
+        let finish = min(calendar.startOfDay(for: pact.finishDate), today)
+        let dayCount = calendar.dateComponents([.day], from: start, to: finish).day ?? 0
+
+        for offset in 0...dayCount {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: start) else { continue }
+            let checkIn = checkIns.first {
+                $0.pactID == pact.id
+                    && $0.userID == userID
+                    && calendar.isDate($0.day, inSameDayAs: day)
+            }
+            if !dayPassed(pact: pact, checkIn: checkIn, on: day) {
+                return false
+            }
+        }
+        return true
+    }
+
+    static func daysCompletedCount(pact: Pact, checkIns: [CheckIn], userID: UUID, calendar: Calendar = .current) -> (completed: Int, total: Int) {
+        let today = calendar.startOfDay(for: Date())
+        let start = calendar.startOfDay(for: pact.startDate)
+        let finish = min(calendar.startOfDay(for: pact.finishDate), today)
+        guard start <= finish else { return (0, 0) }
+
+        let dayCount = calendar.dateComponents([.day], from: start, to: finish).day ?? 0
+        var total = 0
+        var completed = 0
+
+        for offset in 0...dayCount {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: start) else { continue }
+            total += 1
+            let checkIn = checkIns.first {
+                $0.pactID == pact.id
+                    && $0.userID == userID
+                    && calendar.isDate($0.day, inSameDayAs: day)
+            }
+            if dayPassed(pact: pact, checkIn: checkIn, on: day) {
+                completed += 1
+            }
+        }
+
+        return (completed, total)
+    }
+
+    static func participantDayStatus(pact: Pact, checkIns: [CheckIn], participantID: UUID, calendar: Calendar = .current) -> [(date: Date, passed: Bool, percent: Double, hasReported: Bool)] {
+        let today = calendar.startOfDay(for: Date())
+        let start = calendar.startOfDay(for: pact.startDate)
+        let finish = min(calendar.startOfDay(for: pact.finishDate), today)
+        guard start <= finish else { return [] }
+
+        let dayCount = calendar.dateComponents([.day], from: start, to: finish).day ?? 0
+        var results: [(date: Date, passed: Bool, percent: Double, hasReported: Bool)] = []
+
+        for offset in 0...dayCount {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: start) else { continue }
+            let checkIn = checkIns.first {
+                $0.pactID == pact.id
+                    && $0.userID == participantID
+                    && calendar.isDate($0.day, inSameDayAs: day)
+            }
+            let passed = dayPassed(pact: pact, checkIn: checkIn, on: day)
+            let percent = dayKeepPercentage(pact: pact, checkIn: checkIn)
+            results.append((date: day, passed: passed, percent: percent, hasReported: checkIn != nil))
+        }
+
+        return results
     }
 }

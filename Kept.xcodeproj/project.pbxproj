@@ -6,20 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		D1F000172FBD700000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C2A9A8712FBD2F6D004CCA91 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2A9A8782FBD2F6D004CCA91;
+			remoteInfo = Kept;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		C2A9A8792FBD2F6D004CCA91 /* Defy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Defy.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D1F000102FBD700000000001 /* DefyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DefyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2A9A8792FBD2F6D004CCA91 /* Kept.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kept.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1F000102FBD700000000001 /* KeptTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KeptTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		C2A9A87B2FBD2F6D004CCA91 /* Defy */ = {
+		C2A9A87B2FBD2F6D004CCA91 /* Kept */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Defy;
+			path = Kept;
 			sourceTree = "<group>";
 		};
-		D1F000112FBD700000000001 /* DefyTests */ = {
+		D1F000112FBD700000000001 /* KeptTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = DefyTests;
+			path = KeptTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,8 +55,8 @@
 		C2A9A8702FBD2F6D004CCA91 = {
 			isa = PBXGroup;
 			children = (
-				C2A9A87B2FBD2F6D004CCA91 /* Defy */,
-				D1F000112FBD700000000001 /* DefyTests */,
+				C2A9A87B2FBD2F6D004CCA91 /* Kept */,
+				D1F000112FBD700000000001 /* KeptTests */,
 				C2A9A87A2FBD2F6D004CCA91 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,8 +64,8 @@
 		C2A9A87A2FBD2F6D004CCA91 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C2A9A8792FBD2F6D004CCA91 /* Defy.app */,
-				D1F000102FBD700000000001 /* DefyTests.xctest */,
+				C2A9A8792FBD2F6D004CCA91 /* Kept.app */,
+				D1F000102FBD700000000001 /* KeptTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -63,9 +73,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C2A9A8782FBD2F6D004CCA91 /* Defy */ = {
+		C2A9A8782FBD2F6D004CCA91 /* Kept */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C2A9A8842FBD2F6E004CCA91 /* Build configuration list for PBXNativeTarget "Defy" */;
+			buildConfigurationList = C2A9A8842FBD2F6E004CCA91 /* Build configuration list for PBXNativeTarget "Kept" */;
 			buildPhases = (
 				C2A9A8752FBD2F6D004CCA91 /* Sources */,
 				C2A9A8762FBD2F6D004CCA91 /* Frameworks */,
@@ -76,18 +86,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				C2A9A87B2FBD2F6D004CCA91 /* Defy */,
+				C2A9A87B2FBD2F6D004CCA91 /* Kept */,
 			);
-			name = Defy;
+			name = Kept;
 			packageProductDependencies = (
 			);
-			productName = Defy;
-			productReference = C2A9A8792FBD2F6D004CCA91 /* Defy.app */;
+			productName = Kept;
+			productReference = C2A9A8792FBD2F6D004CCA91 /* Kept.app */;
 			productType = "com.apple.product-type.application";
 		};
-		D1F000132FBD700000000001 /* DefyTests */ = {
+		D1F000132FBD700000000001 /* KeptTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D1F000192FBD700000000001 /* Build configuration list for PBXNativeTarget "DefyTests" */;
+			buildConfigurationList = D1F000192FBD700000000001 /* Build configuration list for PBXNativeTarget "KeptTests" */;
 			buildPhases = (
 				D1F000142FBD700000000001 /* Sources */,
 				D1F000122FBD700000000001 /* Frameworks */,
@@ -99,34 +109,16 @@
 				D1F000162FBD700000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				D1F000112FBD700000000001 /* DefyTests */,
+				D1F000112FBD700000000001 /* KeptTests */,
 			);
-			name = DefyTests;
+			name = KeptTests;
 			packageProductDependencies = (
 			);
-			productName = DefyTests;
-			productReference = D1F000102FBD700000000001 /* DefyTests.xctest */;
+			productName = KeptTests;
+			productReference = D1F000102FBD700000000001 /* KeptTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXTargetDependency section */
-		D1F000162FBD700000000001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C2A9A8782FBD2F6D004CCA91 /* Defy */;
-			targetProxy = D1F000172FBD700000000001 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
-/* Begin PBXContainerItemProxy section */
-		D1F000172FBD700000000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C2A9A8712FBD2F6D004CCA91 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C2A9A8782FBD2F6D004CCA91;
-			remoteInfo = Defy;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		C2A9A8712FBD2F6D004CCA91 /* Project object */ = {
@@ -145,7 +137,7 @@
 					};
 				};
 			};
-			buildConfigurationList = C2A9A8742FBD2F6D004CCA91 /* Build configuration list for PBXProject "Defy" */;
+			buildConfigurationList = C2A9A8742FBD2F6D004CCA91 /* Build configuration list for PBXProject "Kept" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -159,8 +151,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C2A9A8782FBD2F6D004CCA91 /* Defy */,
-				D1F000132FBD700000000001 /* DefyTests */,
+				C2A9A8782FBD2F6D004CCA91 /* Kept */,
+				D1F000132FBD700000000001 /* KeptTests */,
 			);
 		};
 /* End PBXProject section */
@@ -198,6 +190,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D1F000162FBD700000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C2A9A8782FBD2F6D004CCA91 /* Kept */;
+			targetProxy = D1F000172FBD700000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		C2A9A8822FBD2F6E004CCA91 /* Debug */ = {
@@ -321,38 +321,25 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				DEVELOPMENT_TEAM = RHY3UVH272;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/KeptInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.Defy;
+				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.Kept;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -363,38 +350,25 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				DEVELOPMENT_TEAM = RHY3UVH272;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/KeptInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.Defy;
+				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.Kept;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -405,14 +379,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.DefyTests;
+				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.KeptTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -421,7 +395,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Defy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Defy";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kept.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kept";
 			};
 			name = Debug;
 		};
@@ -432,14 +406,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.DefyTests;
+				PRODUCT_BUNDLE_IDENTIFIER = TannerFaust.KeptTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -448,14 +422,14 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Defy.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Defy";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kept.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kept";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C2A9A8742FBD2F6D004CCA91 /* Build configuration list for PBXProject "Defy" */ = {
+		C2A9A8742FBD2F6D004CCA91 /* Build configuration list for PBXProject "Kept" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C2A9A8822FBD2F6E004CCA91 /* Debug */,
@@ -464,7 +438,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C2A9A8842FBD2F6E004CCA91 /* Build configuration list for PBXNativeTarget "Defy" */ = {
+		C2A9A8842FBD2F6E004CCA91 /* Build configuration list for PBXNativeTarget "Kept" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C2A9A8852FBD2F6E004CCA91 /* Debug */,
@@ -473,7 +447,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D1F000192FBD700000000001 /* Build configuration list for PBXNativeTarget "DefyTests" */ = {
+		D1F000192FBD700000000001 /* Build configuration list for PBXNativeTarget "KeptTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D1F0001A2FBD700000000001 /* Debug */,

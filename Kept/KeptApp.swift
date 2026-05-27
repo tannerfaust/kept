@@ -1,6 +1,6 @@
 //
-//  DefyApp.swift
-//  Defy
+//  KeptApp.swift
+//  Kept
 //
 //  Created by Tanner Fause on 20.05.2026.
 //
@@ -8,8 +8,8 @@
 import SwiftUI
 
 @main
-struct DefyApp: App {
-    @StateObject private var store = DefyStore()
+struct KeptApp: App {
+    @StateObject private var store = KeptStore()
 
     var body: some Scene {
         WindowGroup {
