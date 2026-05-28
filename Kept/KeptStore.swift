@@ -479,8 +479,13 @@ final class KeptStore: ObservableObject {
                 friends.insert(friend, at: 0)
             }
             friendSearchResult = nil
-            friendStatusMessage = "Friend request sent to \(friend.profile.displayName)."
-            addNotification(title: "Friend request sent", message: "\(friend.profile.displayName) can accept your request now.")
+            if friend.status == .accepted {
+                friendStatusMessage = "\(friend.profile.displayName) is now a friend."
+                addNotification(title: "Friend added", message: "\(friend.profile.displayName) can now join pacts with you.")
+            } else {
+                friendStatusMessage = "Friend request sent to \(friend.profile.displayName)."
+                addNotification(title: "Friend request sent", message: "\(friend.profile.displayName) can accept your request now.")
+            }
         } catch {
             friendStatusMessage = error.localizedDescription
         }
