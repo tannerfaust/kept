@@ -2065,22 +2065,10 @@ struct ProfileView: View {
                             activeSheet = .edit
                         }
 
-                        ProfileStatsGrid(snapshot: store.profileSnapshot)
+                        ProfileStatsStrip(snapshot: store.profileSnapshot)
                         CurrentCommitmentsView(pacts: store.todaysPacts) { pact in
                             store.checkIn(for: pact)
                         }
-                        RecentAccountabilityView(activity: store.profileSnapshot.recentActivity)
-                        FriendVisibleSummaryView(user: user, snapshot: store.profileSnapshot)
-                        
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Score formula")
-                                .font(.headline)
-                            Text("Integrity Score = completed daily conditions divided by expected daily conditions. To-Do conditions must be checked Done. Avoid conditions count as clean unless marked Slipped.")
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .keptGlass(cornerRadius: 24)
                     }
                 }
                 .padding()
@@ -2112,56 +2100,85 @@ struct ProfileHeaderView: View {
     var edit: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 16) {
-                ProfileAvatar(user: user, avatarData: avatarData, size: 92)
-                Spacer()
-                ScoreRing(score: snapshot.integrityScore, lineWidth: 8)
-                    .frame(width: 118, height: 118)
-            }
+        HStack(alignment: .center, spacing: 14) {
+            ProfileAvatar(user: user, avatarData: avatarData, size: 76)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(user.displayName)
-                    .font(.system(.largeTitle, design: .rounded, weight: .black))
+                    .font(.system(.title2, design: .rounded, weight: .black))
                     .foregroundStyle(KeptColor.ink)
+                    .lineLimit(1)
                 Text(user.handle)
-                    .font(.headline.weight(.bold))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Color(hex: user.accentColorHex))
+                    .lineLimit(1)
                 Text(user.bio.isEmpty ? "No bio yet." : user.bio)
-                    .font(.subheadline)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
             }
 
-            Button(action: edit) {
-                Label("Edit profile", systemImage: "pencil")
-                    .frame(maxWidth: .infinity)
+            Spacer(minLength: 8)
+
+            VStack(spacing: 8) {
+                ScoreRing(score: snapshot.integrityScore, lineWidth: 6)
+                    .frame(width: 62, height: 62)
+                Button(action: edit) {
+                    Image(systemName: "pencil")
+                        .font(.caption.weight(.black))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 32, height: 32)
+                        .background(Color.black, in: Circle())
+                }
+                .accessibilityLabel("Edit profile")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.black)
         }
         .padding()
         .background(Color.white)
-        .cornerRadius(30)
+        .cornerRadius(20)
         .overlay(
-            RoundedRectangle(cornerRadius: 30)
+            RoundedRectangle(cornerRadius: 20)
                 .stroke(Color.black, lineWidth: 2)
         )
     }
 }
 
-struct ProfileStatsGrid: View {
+struct ProfileStatsStrip: View {
     let snapshot: ProfileSnapshot
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            MetricPill(title: "Active pacts", value: "\(snapshot.activePactCount)", color: KeptColor.violet)
-            MetricPill(title: "Completed", value: "\(snapshot.completedUnits)", color: KeptColor.green)
-            MetricPill(title: "Missed days", value: "\(snapshot.missedDays)", color: KeptColor.coral)
-            MetricPill(title: "Completion", value: "\(Int((snapshot.completionRate * 100).rounded()))%", color: KeptColor.cyan)
-            MetricPill(title: "Current streak", value: "\(snapshot.currentStreak)d", color: KeptColor.citron)
-            MetricPill(title: "Best streak", value: "\(snapshot.bestStreak)d", color: KeptColor.green)
+        HStack(spacing: 10) {
+            CompactProfileMetric(title: "Active", value: "\(snapshot.activePactCount)", color: KeptColor.violet)
+            CompactProfileMetric(title: "Streak", value: "\(snapshot.currentStreak)d", color: KeptColor.citron)
+            CompactProfileMetric(title: "Kept", value: "\(Int((snapshot.completionRate * 100).rounded()))%", color: KeptColor.green)
         }
+    }
+}
+
+struct CompactProfileMetric: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.headline.weight(.black))
+                .foregroundStyle(KeptColor.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(title)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(color.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.black, lineWidth: 1.3)
+        )
     }
 }
 
