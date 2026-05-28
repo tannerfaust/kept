@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 struct SupabaseConfiguration {
     static let callbackURL = "kept://auth-callback"
@@ -577,17 +578,56 @@ final class SupabaseService: KeptBackendService {
         currentSession = session
         if let data = try? JSONEncoder.kept.encode(session) {
             UserDefaults.standard.set(data, forKey: Self.sessionStorageKey)
+            KeychainStorage.set(data, for: Self.sessionStorageKey)
         }
     }
 
     private func clearStoredSession() {
         currentSession = nil
         UserDefaults.standard.removeObject(forKey: Self.sessionStorageKey)
+        KeychainStorage.delete(Self.sessionStorageKey)
     }
 
     private static func loadStoredSession() -> SupabaseSession? {
-        guard let data = UserDefaults.standard.data(forKey: sessionStorageKey) else { return nil }
+        let data = KeychainStorage.data(for: sessionStorageKey)
+            ?? UserDefaults.standard.data(forKey: sessionStorageKey)
+        guard let data else { return nil }
         return try? JSONDecoder.kept.decode(SupabaseSession.self, from: data)
+    }
+}
+
+private enum KeychainStorage {
+    private static let service = "TannerFaust.Kept"
+
+    static func data(for account: String) -> Data? {
+        var query = baseQuery(account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess else { return nil }
+        return item as? Data
+    }
+
+    static func set(_ data: Data, for account: String) {
+        delete(account)
+        var query = baseQuery(account: account)
+        query[kSecValueData as String] = data
+        query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(query as CFDictionary, nil)
+    }
+
+    static func delete(_ account: String) {
+        SecItemDelete(baseQuery(account: account) as CFDictionary)
+    }
+
+    private static func baseQuery(account: String) -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
     }
 }
 
