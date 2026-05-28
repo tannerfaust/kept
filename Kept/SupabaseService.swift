@@ -50,10 +50,10 @@ struct SupabaseSession: Codable, Equatable {
     var email: String?
 
     enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
-        case refreshToken = "refresh_token"
-        case expiresAt = "expires_at"
-        case userID = "user_id"
+        case accessToken
+        case refreshToken
+        case expiresAt
+        case userID = "userId"
         case email
     }
 
@@ -728,7 +728,7 @@ private struct FriendshipIDRequest: Encodable {
     let friendshipID: UUID
 
     enum CodingKeys: String, CodingKey {
-        case friendshipID = "friendship_id"
+        case friendshipID = "friendshipId"
     }
 }
 
@@ -814,8 +814,8 @@ private struct FriendshipRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case requesterID = "requester_id"
-        case addresseeID = "addressee_id"
+        case requesterID = "requesterId"
+        case addresseeID = "addresseeId"
         case status
     }
 }
@@ -854,21 +854,21 @@ private struct FriendshipProfileRow: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case friendshipID = "friendship_id"
-        case requesterID = "requester_id"
-        case addresseeID = "addressee_id"
+        case friendshipID = "friendshipId"
+        case requesterID = "requesterId"
+        case addresseeID = "addresseeId"
         case status
-        case profileID = "profile_id"
-        case displayName = "display_name"
+        case profileID = "profileId"
+        case displayName
         case handle
         case bio
-        case avatarSymbol = "avatar_symbol"
-        case avatarUrl = "avatar_url"
-        case accentColor = "accent_color"
-        case integrityScore = "integrity_score"
-        case currentStreak = "current_streak"
-        case bestStreak = "best_streak"
-        case completionRate = "completion_rate"
+        case avatarSymbol
+        case avatarUrl
+        case accentColor
+        case integrityScore
+        case currentStreak
+        case bestStreak
+        case completionRate
     }
 }
 
@@ -934,10 +934,10 @@ private struct PactParticipantRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case pactID = "pact_id"
-        case userID = "user_id"
-        case isOwner = "is_owner"
-        case joinedAt = "joined_at"
+        case pactID = "pactId"
+        case userID = "userId"
+        case isOwner
+        case joinedAt
     }
 }
 
@@ -976,13 +976,13 @@ private struct PactConditionRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case pactID = "pact_id"
+        case pactID = "pactId"
         case title
-        case conditionType = "condition_type"
-        case inputType = "input_type"
+        case conditionType
+        case inputType
         case comparison
-        case targetValue = "target_value"
-        case isRequired = "is_required"
+        case targetValue
+        case isRequired
     }
 }
 
@@ -1009,11 +1009,11 @@ private struct CheckInRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case pactID = "pact_id"
-        case userID = "user_id"
+        case pactID = "pactId"
+        case userID = "userId"
         case day
         case note
-        case didReportViolation = "did_report_violation"
+        case didReportViolation
     }
 }
 
@@ -1036,9 +1036,9 @@ private struct CheckInValueRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case checkInID = "check_in_id"
-        case conditionID = "condition_id"
-        case integerValue = "integer_value"
+        case checkInID = "checkInId"
+        case conditionID = "conditionId"
+        case integerValue
     }
 }
 
@@ -1075,12 +1075,12 @@ private struct PactMessageRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case pactID = "pact_id"
-        case userID = "user_id"
-        case senderName = "sender_name"
-        case senderAccentColor = "sender_accent_color"
+        case pactID = "pactId"
+        case userID = "userId"
+        case senderName
+        case senderAccentColor
         case body
-        case createdAt = "created_at"
+        case createdAt
     }
 }
 

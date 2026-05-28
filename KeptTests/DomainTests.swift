@@ -169,6 +169,32 @@ final class DomainTests: XCTestCase {
         XCTAssertEqual(user.avatarSymbol, "bolt.fill")
     }
 
+    func testSupabaseSnakeCaseDecoderSupportsIdAcronyms() throws {
+        struct Row: Decodable {
+            let friendshipID: UUID
+            let requesterID: UUID
+
+            enum CodingKeys: String, CodingKey {
+                case friendshipID = "friendshipId"
+                case requesterID = "requesterId"
+            }
+        }
+
+        let friendshipID = UUID()
+        let requesterID = UUID()
+        let json = """
+        [{
+            "friendship_id": "\(friendshipID.uuidString)",
+            "requester_id": "\(requesterID.uuidString)"
+        }]
+        """.data(using: .utf8)!
+
+        let rows = try JSONDecoder.kept.decode([Row].self, from: json)
+
+        XCTAssertEqual(rows.first?.friendshipID, friendshipID)
+        XCTAssertEqual(rows.first?.requesterID, requesterID)
+    }
+
     @MainActor
     func testCheckInInputMessagesDescribeEveryInput() {
         let user = makeUser()
