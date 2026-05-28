@@ -26,6 +26,7 @@ final class KeptStore: ObservableObject {
     private let notificationScheduler = NotificationScheduler()
     private let backend: KeptBackendService
     private var demoSession: DemoSession?
+    private var liveSyncTask: Task<Void, Never>?
 
     private struct DemoSession {
         let user: UserProfile
@@ -106,7 +107,8 @@ final class KeptStore: ObservableObject {
         do {
             if let user = try await backend.restoreSession() {
                 currentUser = user
-                await reloadLiveData()
+                await reloadLiveData(showNotificationOnError: true)
+                startLiveSync()
             }
         } catch {
             authStatusMessage = error.localizedDescription
@@ -122,7 +124,8 @@ final class KeptStore: ObservableObject {
         do {
             currentUser = try await backend.handleAuthCallback(url)
             authStatusMessage = ""
-            await reloadLiveData()
+            await reloadLiveData(showNotificationOnError: true)
+            startLiveSync()
         } catch {
             authStatusMessage = error.localizedDescription
         }
@@ -141,7 +144,23 @@ final class KeptStore: ObservableObject {
         }
     }
 
-    private func reloadLiveData() async {
+    func startLiveSync() {
+        guard isSupabaseConfigured, currentUser != nil, liveSyncTask == nil else { return }
+        liveSyncTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { return }
+                await self?.reloadLiveData(showNotificationOnError: false)
+            }
+        }
+    }
+
+    private func stopLiveSync() {
+        liveSyncTask?.cancel()
+        liveSyncTask = nil
+    }
+
+    private func reloadLiveData(showNotificationOnError: Bool) async {
         guard isSupabaseConfigured, let currentUser else { return }
 
         do {
@@ -155,7 +174,9 @@ final class KeptStore: ObservableObject {
             checkIns = try await liveCheckIns
             pactMessages = try await liveMessages
         } catch {
-            addNotification(title: "Sync issue", message: error.localizedDescription)
+            if showNotificationOnError {
+                addNotification(title: "Sync issue", message: error.localizedDescription)
+            }
         }
     }
 
@@ -214,6 +235,7 @@ final class KeptStore: ObservableObject {
     }
 
     func signOut() {
+        stopLiveSync()
         if isSupabaseConfigured {
             Task { try? await backend.signOut() }
         }

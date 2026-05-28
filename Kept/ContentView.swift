@@ -58,6 +58,7 @@ struct ContentView: View {
         .preferredColorScheme(.light)
         .task {
             await store.restoreLiveSessionIfPossible()
+            store.startLiveSync()
         }
         .onOpenURL { url in
             Task {
