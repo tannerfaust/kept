@@ -198,28 +198,20 @@ final class SupabaseService: KeptBackendService, KeptBackendBreadcrumbCarrier {
     }
 
     func fetchFriends(userID: UUID) async throws -> [KeptFriend] {
-        let rows: [FriendshipRow] = try await restRequest(
-            path: "friendships",
-            queryItems: [
-                URLQueryItem(name: "or", value: "(requester_id.eq.\(userID.uuidString.lowercased()),addressee_id.eq.\(userID.uuidString.lowercased()))"),
-                URLQueryItem(name: "select", value: "*")
-            ],
-            method: "GET",
+        let rows: [FriendshipProfileRow] = try await rpcRequest(
+            function: "list_friendships",
+            method: "POST",
             body: Optional<EmptyBody>.none
         )
 
-        let otherIDs = rows.map { $0.requesterID == userID ? $0.addresseeID : $0.requesterID }
-        let profiles = try await fetchProfiles(ids: otherIDs)
-        return rows.compactMap { row in
-            let otherID = row.requesterID == userID ? row.addresseeID : row.requesterID
-            guard let profile = profiles[otherID] else { return nil }
+        return rows.map { row in
             let direction: KeptFriend.PendingDirection?
             if row.status == .pending {
                 direction = row.requesterID == userID ? .outgoing : .incoming
             } else {
                 direction = nil
             }
-            return KeptFriend(id: row.id, profile: profile, status: row.status, pendingDirection: direction)
+            return KeptFriend(id: row.friendshipID, profile: row.profile, status: row.status, pendingDirection: direction)
         }
     }
 
@@ -584,7 +576,26 @@ final class SupabaseService: KeptBackendService, KeptBackendBreadcrumbCarrier {
         if Response.self == EmptyResponse.self || data.isEmpty {
             return EmptyResponse() as! Response
         }
-        return try JSONDecoder.kept.decode(Response.self, from: data)
+        do {
+            return try JSONDecoder.kept.decode(Response.self, from: data)
+        } catch {
+            throw SupabaseError.backend("Could not read Supabase response: \(Self.decodingMessage(for: error))")
+        }
+    }
+
+    private static func decodingMessage(for error: Error) -> String {
+        switch error {
+        case DecodingError.keyNotFound(let key, let context):
+            return "missing '\(key.stringValue)' at \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case DecodingError.valueNotFound(_, let context):
+            return "missing value at \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case DecodingError.typeMismatch(_, let context):
+            return "wrong type at \(context.codingPath.map(\.stringValue).joined(separator: "."))"
+        case DecodingError.dataCorrupted(let context):
+            return context.debugDescription
+        default:
+            return error.localizedDescription
+        }
     }
 
     private func callbackParameters(from url: URL) -> [String: String] {
@@ -806,6 +817,58 @@ private struct FriendshipRow: Codable {
         case requesterID = "requester_id"
         case addresseeID = "addressee_id"
         case status
+    }
+}
+
+private struct FriendshipProfileRow: Codable {
+    var friendshipID: UUID
+    var requesterID: UUID
+    var addresseeID: UUID
+    var status: FriendshipStatus
+    var profileID: UUID
+    var displayName: String
+    var handle: String
+    var bio: String
+    var avatarSymbol: String
+    var avatarUrl: URL?
+    var accentColor: String
+    var integrityScore: Double
+    var currentStreak: Int
+    var bestStreak: Int
+    var completionRate: Double
+
+    var profile: UserProfile {
+        UserProfile(
+            id: profileID,
+            displayName: displayName,
+            handle: handle,
+            bio: bio,
+            avatarSymbol: avatarSymbol,
+            avatarURL: avatarUrl,
+            accentColorHex: accentColor,
+            integrityScore: integrityScore,
+            currentStreak: currentStreak,
+            bestStreak: bestStreak,
+            completionRate: completionRate
+        )
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case friendshipID = "friendship_id"
+        case requesterID = "requester_id"
+        case addresseeID = "addressee_id"
+        case status
+        case profileID = "profile_id"
+        case displayName = "display_name"
+        case handle
+        case bio
+        case avatarSymbol = "avatar_symbol"
+        case avatarUrl = "avatar_url"
+        case accentColor = "accent_color"
+        case integrityScore = "integrity_score"
+        case currentStreak = "current_streak"
+        case bestStreak = "best_streak"
+        case completionRate = "completion_rate"
     }
 }
 
