@@ -1842,7 +1842,7 @@ struct PactDetailView: View {
                             proxy.scrollTo(last.id, anchor: .bottom)
                         }
                     }
-                    .onChange(of: chatMessages.count) { _ in
+                    .onChange(of: chatMessages.count) {
                         if let last = chatMessages.last {
                             withAnimation {
                                 proxy.scrollTo(last.id, anchor: .bottom)
