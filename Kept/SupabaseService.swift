@@ -87,7 +87,8 @@ protocol KeptBackendService {
 }
 
 final class SupabaseService: KeptBackendService, KeptBackendBreadcrumbCarrier {
-    private static let sessionStorageKey = "kept.supabase.session"
+    private static let sessionStorageKey = "kept.supabase.session.v2"
+    private static let legacySessionStorageKey = "kept.supabase.session"
 
     private let configuration: SupabaseConfiguration
     private let session: URLSession
@@ -602,51 +603,95 @@ final class SupabaseService: KeptBackendService, KeptBackendBreadcrumbCarrier {
         currentSession = session
         if let data = try? JSONEncoder.kept.encode(session) {
             UserDefaults.standard.set(data, forKey: Self.sessionStorageKey)
-            KeychainStorage.set(data, for: Self.sessionStorageKey)
+            UserDefaults.standard.set(data, forKey: Self.legacySessionStorageKey)
+            UserDefaults.standard.synchronize()
+
+            if !KeychainStorage.set(data, for: Self.sessionStorageKey) {
+                KeptBreadcrumbLog.backend(method: "KEYCHAIN", path: "session.store", breadcrumb: "write failed", statusCode: nil)
+            }
         }
     }
 
     private func clearStoredSession() {
         currentSession = nil
         UserDefaults.standard.removeObject(forKey: Self.sessionStorageKey)
+        UserDefaults.standard.removeObject(forKey: Self.legacySessionStorageKey)
+        UserDefaults.standard.synchronize()
         KeychainStorage.delete(Self.sessionStorageKey)
+        KeychainStorage.delete(Self.legacySessionStorageKey)
     }
 
     private static func loadStoredSession() -> SupabaseSession? {
-        let data = KeychainStorage.data(for: sessionStorageKey)
-            ?? UserDefaults.standard.data(forKey: sessionStorageKey)
-        guard let data else { return nil }
-        return try? JSONDecoder.kept.decode(SupabaseSession.self, from: data)
+        let candidates = [
+            KeychainStorage.data(for: sessionStorageKey),
+            UserDefaults.standard.data(forKey: sessionStorageKey),
+            KeychainStorage.data(for: legacySessionStorageKey),
+            UserDefaults.standard.data(forKey: legacySessionStorageKey)
+        ]
+
+        for data in candidates.compactMap({ $0 }) {
+            if let session = try? JSONDecoder.kept.decode(SupabaseSession.self, from: data) {
+                return session
+            }
+        }
+        return nil
     }
 }
 
 private enum KeychainStorage {
-    private static let service = "TannerFaust.Kept"
-
-    static func data(for account: String) -> Data? {
-        var query = baseQuery(account: account)
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess else { return nil }
-        return item as? Data
+    private static var services: [String] {
+        var values = [Bundle.main.bundleIdentifier ?? "TannerFaust.Kept"]
+        values.append("TannerFaust.Kept")
+        return Array(Set(values))
     }
 
-    static func set(_ data: Data, for account: String) {
-        delete(account)
-        var query = baseQuery(account: account)
-        query[kSecValueData as String] = data
-        query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(query as CFDictionary, nil)
+    static func data(for account: String) -> Data? {
+        for service in services {
+            var query = baseQuery(account: account, service: service)
+            query[kSecReturnData as String] = true
+            query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+            var item: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &item)
+            if status == errSecSuccess, let data = item as? Data {
+                return data
+            }
+        }
+        return nil
+    }
+
+    @discardableResult
+    static func set(_ data: Data, for account: String) -> Bool {
+        var didWrite = false
+        for service in services {
+            let query = baseQuery(account: account, service: service)
+            let attributes: [String: Any] = [
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            ]
+            let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+            if updateStatus == errSecSuccess {
+                didWrite = true
+                continue
+            }
+
+            var addQuery = query
+            attributes.forEach { addQuery[$0.key] = $0.value }
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            if addStatus == errSecSuccess || addStatus == errSecDuplicateItem {
+                didWrite = true
+            }
+        }
+        return didWrite
     }
 
     static func delete(_ account: String) {
-        SecItemDelete(baseQuery(account: account) as CFDictionary)
+        services.forEach { service in
+            SecItemDelete(baseQuery(account: account, service: service) as CFDictionary)
+        }
     }
 
-    private static func baseQuery(account: String) -> [String: Any] {
+    private static func baseQuery(account: String, service: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
