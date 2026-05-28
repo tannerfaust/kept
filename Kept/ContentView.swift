@@ -2024,6 +2024,25 @@ struct FriendsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    if let profile = store.friendSearchResult {
+                        HStack(spacing: 12) {
+                            Avatar(symbol: profile.avatarSymbol, color: Color(hex: profile.accentColorHex), size: 36)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(profile.displayName)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(profile.handle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Add") {
+                                store.sendFriendRequest(handle: profile.handle)
+                                handle = ""
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
 
                 Section("Network") {

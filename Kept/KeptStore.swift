@@ -14,6 +14,7 @@ final class KeptStore: ObservableObject {
     @Published var isAuthBusy = false
     @Published var authStatusMessage = ""
     @Published var friendStatusMessage = ""
+    @Published var friendSearchResult: UserProfile?
     @Published var localAvatarData: Data?
 
     static let demoUserID = UUID(uuidString: "A1111111-1111-4111-8111-111111111111")!
@@ -312,6 +313,7 @@ final class KeptStore: ObservableObject {
     func sendFriendRequest(handle: String) {
         guard let normalizedHandle = ProfileHandleValidator.normalized(handle) else {
             friendStatusMessage = "Use a valid @handle."
+            friendSearchResult = nil
             return
         }
 
@@ -340,6 +342,7 @@ final class KeptStore: ObservableObject {
     func findFriend(handle: String) {
         guard let normalizedHandle = ProfileHandleValidator.normalized(handle) else {
             friendStatusMessage = "Use a valid @handle."
+            friendSearchResult = nil
             return
         }
 
@@ -365,6 +368,7 @@ final class KeptStore: ObservableObject {
 
     private func findLiveFriend(handle: String) async {
         friendStatusMessage = "Searching..."
+        friendSearchResult = nil
         do {
             guard let profile = try await backend.findProfile(handle: handle) else {
                 friendStatusMessage = "No user found for \(handle)."
@@ -375,9 +379,11 @@ final class KeptStore: ObservableObject {
             } else if friends.contains(where: { $0.profile.id == profile.id }) {
                 friendStatusMessage = "\(profile.displayName) is already in your network."
             } else {
+                friendSearchResult = profile
                 friendStatusMessage = "Found \(profile.displayName). Tap Add to send a request."
             }
         } catch {
+            friendSearchResult = nil
             friendStatusMessage = error.localizedDescription
         }
     }
@@ -391,6 +397,7 @@ final class KeptStore: ObservableObject {
             } else {
                 friends.insert(friend, at: 0)
             }
+            friendSearchResult = nil
             friendStatusMessage = "Friend request sent to \(friend.profile.displayName)."
             addNotification(title: "Friend request sent", message: "\(friend.profile.displayName) can accept your request now.")
         } catch {
