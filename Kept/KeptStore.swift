@@ -4,6 +4,8 @@ import UserNotifications
 
 @MainActor
 final class KeptStore: ObservableObject {
+    private static let cachedUserKey = "kept.cached.currentUser"
+
     @Published var currentUser: UserProfile?
     @Published var friends: [KeptFriend] = []
     @Published var pacts: [Pact] = []
@@ -89,6 +91,9 @@ final class KeptStore: ObservableObject {
         if seedDemoData {
             demoSession = Self.makeDemoSession()
         }
+        if self.backend.currentSession != nil, let cachedUser = Self.loadCachedUser() {
+            currentUser = cachedUser
+        }
     }
 
     private func recordInteraction(_ name: String) {
@@ -140,11 +145,18 @@ final class KeptStore: ObservableObject {
     }
 
     func restoreLiveSessionIfPossible() async {
-        guard isSupabaseConfigured, currentUser == nil else {
+        guard isSupabaseConfigured else {
             hasAttemptedSessionRestore = true
             return
         }
-        isAuthBusy = true
+
+        guard backend.currentSession != nil else {
+            currentUser = nil
+            hasAttemptedSessionRestore = true
+            return
+        }
+
+        isAuthBusy = currentUser == nil
         authStatusMessage = "Restoring your session..."
         defer { isAuthBusy = false }
 
@@ -154,6 +166,7 @@ final class KeptStore: ObservableObject {
             }
             if let user {
                 currentUser = user
+                Self.storeCachedUser(user)
                 authStatusMessage = ""
                 await reloadLiveData(showNotificationOnError: true)
                 startLiveSync()
@@ -175,6 +188,9 @@ final class KeptStore: ObservableObject {
         do {
             currentUser = try await withBackendBreadcrumb("auth.handleCallback", interaction: "auth.handleCallback") {
                 try await backend.handleAuthCallback(url)
+            }
+            if let currentUser {
+                Self.storeCachedUser(currentUser)
             }
             magicLinkSent = false
             authStatusMessage = ""
@@ -280,6 +296,7 @@ final class KeptStore: ObservableObject {
         user.bestStreak = snapshot.bestStreak
         user.completionRate = snapshot.completionRate
         currentUser = user
+        Self.storeCachedUser(user)
         replaceUserInPacts(user)
 
         if isSupabaseConfigured, !isCurrentUserDemo {
@@ -309,6 +326,7 @@ final class KeptStore: ObservableObject {
         }
         user.avatarURL = url
         currentUser = user
+        Self.storeCachedUser(user)
         replaceUserInPacts(user)
         addNotification(title: "Avatar updated", message: "Your profile photo is ready in demo mode. Supabase Storage will use the same handoff.")
         return url
@@ -329,6 +347,7 @@ final class KeptStore: ObservableObject {
             }
         }
         currentUser = nil
+        Self.clearCachedUser()
         localAvatarData = nil
         friends = []
         pacts = []
@@ -340,6 +359,23 @@ final class KeptStore: ObservableObject {
     func clearDemoData() {
         demoSession = nil
         signOut()
+    }
+
+    private static func storeCachedUser(_ user: UserProfile) {
+        if let data = try? JSONEncoder.kept.encode(user) {
+            UserDefaults.standard.set(data, forKey: cachedUserKey)
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    private static func loadCachedUser() -> UserProfile? {
+        guard let data = UserDefaults.standard.data(forKey: cachedUserKey) else { return nil }
+        return try? JSONDecoder.kept.decode(UserProfile.self, from: data)
+    }
+
+    private static func clearCachedUser() {
+        UserDefaults.standard.removeObject(forKey: cachedUserKey)
+        UserDefaults.standard.synchronize()
     }
 
     func sendPactMessage(pactID: UUID, text: String) {
