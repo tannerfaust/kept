@@ -46,6 +46,14 @@ struct SupabaseSession: Codable, Equatable {
     var userID: UUID
     var email: String?
 
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case refreshToken = "refresh_token"
+        case expiresAt = "expires_at"
+        case userID = "user_id"
+        case email
+    }
+
     var isExpired: Bool {
         Date().addingTimeInterval(60) >= expiresAt
     }
@@ -75,12 +83,13 @@ protocol KeptBackendService {
     func signOut() async throws
 }
 
-final class SupabaseService: KeptBackendService {
+final class SupabaseService: KeptBackendService, KeptBackendBreadcrumbCarrier {
     private static let sessionStorageKey = "kept.supabase.session"
 
     private let configuration: SupabaseConfiguration
     private let session: URLSession
     private(set) var currentSession: SupabaseSession?
+    var requestBreadcrumb: String?
 
     init(configuration: SupabaseConfiguration = .current, session: URLSession = .shared) {
         self.configuration = configuration
@@ -549,9 +558,18 @@ final class SupabaseService: KeptBackendService {
         } else if method == "PATCH" {
             request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
         }
+        applyBreadcrumbHeader(to: &request)
 
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
+        let httpResponse = response as? HTTPURLResponse
+        let statusCode = httpResponse?.statusCode
+        KeptBreadcrumbLog.backend(
+            method: method,
+            path: basePath,
+            breadcrumb: requestBreadcrumb,
+            statusCode: statusCode
+        )
+        guard let httpResponse,
               (200..<300).contains(httpResponse.statusCode) else {
             throw SupabaseError.invalidResponse
         }
@@ -646,6 +664,10 @@ private struct HandleRequest: Encodable {
 
 private struct FriendshipIDRequest: Encodable {
     let friendshipID: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case friendshipID = "friendship_id"
+    }
 }
 
 private struct TokenResponse: Decodable {
@@ -727,6 +749,13 @@ private struct FriendshipRow: Codable {
     var requesterID: UUID
     var addresseeID: UUID
     var status: FriendshipStatus
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case requesterID = "requester_id"
+        case addresseeID = "addressee_id"
+        case status
+    }
 }
 
 private struct PactRecord: Codable {
@@ -788,6 +817,14 @@ private struct PactParticipantRow: Codable {
         isOwner = participant.isOwner
         joinedAt = participant.joinedAt
     }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case pactID = "pact_id"
+        case userID = "user_id"
+        case isOwner = "is_owner"
+        case joinedAt = "joined_at"
+    }
 }
 
 private struct PactConditionRow: Codable {
@@ -822,6 +859,17 @@ private struct PactConditionRow: Codable {
             isRequired: isRequired
         )
     }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case pactID = "pact_id"
+        case title
+        case conditionType = "condition_type"
+        case inputType = "input_type"
+        case comparison
+        case targetValue = "target_value"
+        case isRequired = "is_required"
+    }
 }
 
 private struct CheckInRow: Codable {
@@ -844,6 +892,15 @@ private struct CheckInRow: Codable {
     func model(values: [CheckInValue]) -> CheckIn {
         CheckIn(id: id, pactID: pactID, userID: userID, day: day, note: note, didReportViolation: didReportViolation, values: values)
     }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case pactID = "pact_id"
+        case userID = "user_id"
+        case day
+        case note
+        case didReportViolation = "did_report_violation"
+    }
 }
 
 private struct CheckInValueRow: Codable {
@@ -861,6 +918,13 @@ private struct CheckInValueRow: Codable {
 
     var model: CheckInValue {
         CheckInValue(id: id, conditionID: conditionID, integerValue: integerValue)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case checkInID = "check_in_id"
+        case conditionID = "condition_id"
+        case integerValue = "integer_value"
     }
 }
 
@@ -893,6 +957,16 @@ private struct PactMessageRow: Codable {
             text: body,
             createdAt: createdAt
         )
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case pactID = "pact_id"
+        case userID = "user_id"
+        case senderName = "sender_name"
+        case senderAccentColor = "sender_accent_color"
+        case body
+        case createdAt = "created_at"
     }
 }
 

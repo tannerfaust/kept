@@ -13,10 +13,13 @@ final class KeptStore: ObservableObject {
     @Published var isSupabaseConfigured = SupabaseConfiguration.current.isConfigured
     @Published var isAuthBusy = false
     @Published var hasAttemptedSessionRestore = false
+    @Published var magicLinkSent = false
     @Published var authStatusMessage = ""
     @Published var friendStatusMessage = ""
     @Published var friendSearchResult: UserProfile?
     @Published var localAvatarData: Data?
+
+    weak var breadcrumbTrail: KeptBreadcrumbTrail?
 
     static let demoUserID = UUID(uuidString: "A1111111-1111-4111-8111-111111111111")!
     static let systemSenderID = UUID(uuidString: "00000000-0000-4000-8000-000000000000")!
@@ -40,6 +43,14 @@ final class KeptStore: ObservableObject {
 
     var acceptedFriends: [KeptFriend] {
         friends.filter { $0.status == .accepted }
+    }
+
+    var incomingFriendRequests: [KeptFriend] {
+        friends.filter { $0.status == .pending && $0.pendingDirection == .incoming }
+    }
+
+    var outgoingFriendRequests: [KeptFriend] {
+        friends.filter { $0.status == .pending && $0.pendingDirection == .outgoing }
     }
 
     var integrity: IntegritySnapshot {
@@ -79,6 +90,29 @@ final class KeptStore: ObservableObject {
         }
     }
 
+    private func recordInteraction(_ name: String) {
+        breadcrumbTrail?.recordInteraction(name)
+    }
+
+    private func withBackendBreadcrumb<T>(
+        _ action: String,
+        interaction: String? = nil,
+        _ work: () async throws -> T
+    ) async rethrows -> T {
+        if let interaction {
+            recordInteraction(interaction)
+        }
+        if let service = backend as? SupabaseService {
+            service.requestBreadcrumb = breadcrumbTrail?.backendContext(action: action)
+        }
+        defer {
+            if let service = backend as? SupabaseService {
+                service.requestBreadcrumb = nil
+            }
+        }
+        return try await work()
+    }
+
     static var preview: KeptStore {
         let store = KeptStore()
         store.signInWithApple()
@@ -86,6 +120,8 @@ final class KeptStore: ObservableObject {
     }
 
     func signInWithEmail(_ email: String) {
+        recordInteraction("auth.signInWithEmail")
+        magicLinkSent = false
         if isSupabaseConfigured {
             Task { await sendMagicLink(email: email) }
             return
@@ -97,6 +133,7 @@ final class KeptStore: ObservableObject {
     }
 
     func signInWithApple() {
+        recordInteraction("auth.signInWithApple")
         activateDemoSession(displayName: "Tanner")
         addNotification(title: "Demo sign-in", message: "Apple sign-in is disabled while Kept starts with email magic links.")
     }
@@ -111,7 +148,10 @@ final class KeptStore: ObservableObject {
         defer { isAuthBusy = false }
 
         do {
-            if let user = try await backend.restoreSession() {
+            let user = try await withBackendBreadcrumb("auth.restoreSession", interaction: "auth.restoreSession") {
+                try await backend.restoreSession()
+            }
+            if let user {
                 currentUser = user
                 authStatusMessage = ""
                 await reloadLiveData(showNotificationOnError: true)
@@ -132,7 +172,10 @@ final class KeptStore: ObservableObject {
         defer { isAuthBusy = false }
 
         do {
-            currentUser = try await backend.handleAuthCallback(url)
+            currentUser = try await withBackendBreadcrumb("auth.handleCallback", interaction: "auth.handleCallback") {
+                try await backend.handleAuthCallback(url)
+            }
+            magicLinkSent = false
             authStatusMessage = ""
             await reloadLiveData(showNotificationOnError: true)
             startLiveSync()
@@ -143,13 +186,18 @@ final class KeptStore: ObservableObject {
 
     private func sendMagicLink(email: String) async {
         isAuthBusy = true
+        magicLinkSent = false
         authStatusMessage = "Sending magic link..."
         defer { isAuthBusy = false }
 
         do {
-            try await backend.sendMagicLink(email: email)
+            try await withBackendBreadcrumb("auth.sendMagicLink", interaction: "auth.sendMagicLink") {
+                try await backend.sendMagicLink(email: email)
+            }
+            magicLinkSent = true
             authStatusMessage = "Magic link sent. Open it on this device to sign in."
         } catch {
+            magicLinkSent = false
             authStatusMessage = error.localizedDescription
         }
     }
@@ -174,15 +222,19 @@ final class KeptStore: ObservableObject {
         guard isSupabaseConfigured, let currentUser else { return }
 
         do {
-            async let liveFriends = backend.fetchFriends(userID: currentUser.id)
-            async let livePacts = backend.fetchPacts(userID: currentUser.id)
-            async let liveCheckIns = backend.fetchCheckIns(userID: currentUser.id)
-            async let liveMessages = backend.fetchPactMessages(userID: currentUser.id)
-
-            friends = try await liveFriends
-            pacts = try await livePacts
-            checkIns = try await liveCheckIns
-            pactMessages = try await liveMessages
+            let syncAction = showNotificationOnError ? "sync.reloadLiveData" : "sync.pollLiveData"
+            friends = try await withBackendBreadcrumb("\(syncAction).friends") {
+                try await backend.fetchFriends(userID: currentUser.id)
+            }
+            pacts = try await withBackendBreadcrumb("\(syncAction).pacts") {
+                try await backend.fetchPacts(userID: currentUser.id)
+            }
+            checkIns = try await withBackendBreadcrumb("\(syncAction).checkIns") {
+                try await backend.fetchCheckIns(userID: currentUser.id)
+            }
+            pactMessages = try await withBackendBreadcrumb("\(syncAction).messages") {
+                try await backend.fetchPactMessages(userID: currentUser.id)
+            }
         } catch {
             if showNotificationOnError {
                 addNotification(title: "Sync issue", message: error.localizedDescription)
@@ -214,7 +266,9 @@ final class KeptStore: ObservableObject {
 
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task {
-                try? await backend.updateProfile(user)
+                try? await withBackendBreadcrumb("profile.update", interaction: "profile.update") {
+                    try await backend.updateProfile(user)
+                }
             }
         }
     }
@@ -227,7 +281,9 @@ final class KeptStore: ObservableObject {
         localAvatarData = data
         let url: URL
         if isSupabaseConfigured, !isCurrentUserDemo {
-            url = try await backend.uploadAvatarImage(data, userID: user.id)
+            url = try await withBackendBreadcrumb("profile.uploadAvatar", interaction: "profile.uploadAvatar") {
+                try await backend.uploadAvatarImage(data, userID: user.id)
+            }
         } else if let localURL = URL(string: "kept-local-avatar://profiles/\(user.id.uuidString.lowercased()).jpg") {
             url = localURL
         } else {
@@ -245,9 +301,14 @@ final class KeptStore: ObservableObject {
     }
 
     func signOut() {
+        recordInteraction("auth.signOut")
         stopLiveSync()
         if isSupabaseConfigured {
-            Task { try? await backend.signOut() }
+            Task {
+                try? await withBackendBreadcrumb("auth.signOut", interaction: "auth.signOut") {
+                    try await backend.signOut()
+                }
+            }
         }
         currentUser = nil
         localAvatarData = nil
@@ -264,6 +325,7 @@ final class KeptStore: ObservableObject {
     }
 
     func sendPactMessage(pactID: UUID, text: String) {
+        recordInteraction("pact.sendMessage")
         guard let currentUser else { return }
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return }
@@ -280,7 +342,9 @@ final class KeptStore: ObservableObject {
         pactMessages.append(message)
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task {
-                try? await backend.postPactMessage(message)
+                try? await withBackendBreadcrumb("pact.postMessage") {
+                    try await backend.postPactMessage(message)
+                }
             }
         }
     }
@@ -320,6 +384,7 @@ final class KeptStore: ObservableObject {
     }
 
     func sendFriendRequest(handle: String) {
+        recordInteraction("friends.sendRequest")
         guard let normalizedHandle = ProfileHandleValidator.normalized(handle) else {
             friendStatusMessage = "Use a valid @handle."
             friendSearchResult = nil
@@ -349,6 +414,7 @@ final class KeptStore: ObservableObject {
     }
 
     func findFriend(handle: String) {
+        recordInteraction("friends.find")
         guard let normalizedHandle = ProfileHandleValidator.normalized(handle) else {
             friendStatusMessage = "Use a valid @handle."
             friendSearchResult = nil
@@ -364,6 +430,7 @@ final class KeptStore: ObservableObject {
     }
 
     func acceptFriend(_ friend: KeptFriend) {
+        recordInteraction("friends.accept")
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task { await acceptLiveFriend(friend) }
             return
@@ -379,7 +446,10 @@ final class KeptStore: ObservableObject {
         friendStatusMessage = "Searching..."
         friendSearchResult = nil
         do {
-            guard let profile = try await backend.findProfile(handle: handle) else {
+            let profile = try await withBackendBreadcrumb("friends.findProfile", interaction: "friends.find") {
+                try await backend.findProfile(handle: handle)
+            }
+            guard let profile else {
                 friendStatusMessage = "No user found for \(handle)."
                 return
             }
@@ -400,7 +470,9 @@ final class KeptStore: ObservableObject {
     private func sendLiveFriendRequest(handle: String) async {
         friendStatusMessage = "Sending request..."
         do {
-            let friend = try await backend.sendFriendRequest(handle: handle)
+            let friend = try await withBackendBreadcrumb("friends.sendRequest", interaction: "friends.sendRequest") {
+                try await backend.sendFriendRequest(handle: handle)
+            }
             if let index = friends.firstIndex(where: { $0.id == friend.id || $0.profile.id == friend.profile.id }) {
                 friends[index] = friend
             } else {
@@ -417,7 +489,9 @@ final class KeptStore: ObservableObject {
     private func acceptLiveFriend(_ friend: KeptFriend) async {
         friendStatusMessage = "Accepting request..."
         do {
-            let updatedFriend = try await backend.acceptFriendRequest(friend)
+            let updatedFriend = try await withBackendBreadcrumb("friends.acceptRequest", interaction: "friends.accept") {
+                try await backend.acceptFriendRequest(friend)
+            }
             if let index = friends.firstIndex(where: { $0.id == updatedFriend.id }) {
                 friends[index] = updatedFriend
             }
@@ -429,6 +503,7 @@ final class KeptStore: ObservableObject {
     }
 
     func createPact(draft: PactDraft) {
+        recordInteraction("pact.create")
         guard let currentUser else { return }
 
         let selectedFriendIDs = Set(draft.friendIDs)
@@ -458,7 +533,9 @@ final class KeptStore: ObservableObject {
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task {
                 do {
-                    try await backend.createPact(pact)
+                    try await withBackendBreadcrumb("pact.create", interaction: "pact.create") {
+                        try await backend.createPact(pact)
+                    }
                 } catch {
                     addNotification(title: "Pact sync failed", message: error.localizedDescription, pactID: pact.id)
                 }
@@ -479,12 +556,15 @@ final class KeptStore: ObservableObject {
         pactMessages.append(msg)
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task {
-                try? await backend.postPactMessage(msg)
+                try? await withBackendBreadcrumb("pact.postSystemMessage") {
+                    try await backend.postPactMessage(msg)
+                }
             }
         }
     }
 
     func recordCheckIn(pact: Pact, values: [UUID: Int], note: String = "") {
+        recordInteraction("pact.recordCheckIn")
         guard let currentUser else { return }
 
         let checkInValues = values.map { conditionID, value in
@@ -505,7 +585,9 @@ final class KeptStore: ObservableObject {
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task {
                 do {
-                    try await backend.submitCheckIn(checkIn)
+                    try await withBackendBreadcrumb("pact.submitCheckIn", interaction: "pact.recordCheckIn") {
+                        try await backend.submitCheckIn(checkIn)
+                    }
                 } catch {
                     addNotification(title: "Check-in sync failed", message: error.localizedDescription, pactID: pact.id)
                 }
@@ -568,6 +650,7 @@ final class KeptStore: ObservableObject {
     }
 
     func reportViolation(pact: Pact, note: String) {
+        recordInteraction("pact.reportViolation")
         guard let currentUser else { return }
 
         let checkIn = CheckIn(
@@ -585,7 +668,9 @@ final class KeptStore: ObservableObject {
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task {
                 do {
-                    try await backend.submitCheckIn(checkIn)
+                    try await withBackendBreadcrumb("pact.submitViolation", interaction: "pact.reportViolation") {
+                        try await backend.submitCheckIn(checkIn)
+                    }
                 } catch {
                     addNotification(title: "Violation sync failed", message: error.localizedDescription, pactID: pact.id)
                 }
@@ -600,6 +685,7 @@ final class KeptStore: ObservableObject {
     }
 
     func deleteCheckIn(for pact: Pact, on date: Date = Date()) {
+        recordInteraction("pact.deleteCheckIn")
         guard let currentUser else { return }
         checkIns.removeAll {
             $0.pactID == pact.id
@@ -612,7 +698,9 @@ final class KeptStore: ObservableObject {
         if isSupabaseConfigured, !isCurrentUserDemo {
             Task {
                 do {
-                    try await backend.deleteCheckIn(pactID: pact.id, userID: currentUser.id, day: date)
+                    try await withBackendBreadcrumb("pact.deleteCheckIn", interaction: "pact.deleteCheckIn") {
+                        try await backend.deleteCheckIn(pactID: pact.id, userID: currentUser.id, day: date)
+                    }
                 } catch {
                     addNotification(title: "Unlock sync failed", message: error.localizedDescription, pactID: pact.id)
                 }

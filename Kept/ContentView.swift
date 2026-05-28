@@ -30,6 +30,7 @@ enum KeptTab: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @EnvironmentObject private var store: KeptStore
+    @EnvironmentObject private var breadcrumbTrail: KeptBreadcrumbTrail
     @State private var tab: KeptTab = .today
 
     var body: some View {
@@ -38,8 +39,10 @@ struct ContentView: View {
             if store.currentUser == nil {
                 if store.isSupabaseConfigured && !store.hasAttemptedSessionRestore {
                     RestoreSessionView()
+                        .keptScreenBreadcrumbs([.flow("Restore Session")])
                 } else {
                     AuthView()
+                        .keptScreenBreadcrumbs([.flow("Sign In")])
                 }
             } else {
                 TabView(selection: $tab) {
@@ -67,6 +70,14 @@ struct ContentView: View {
         .onOpenURL { url in
             Task {
                 await store.handleAuthCallback(url)
+            }
+        }
+        .onChange(of: tab) { _, newTab in
+            breadcrumbTrail.update([.tab(newTab)])
+        }
+        .onAppear {
+            if store.currentUser != nil {
+                breadcrumbTrail.update([.tab(tab)])
             }
         }
     }
@@ -133,9 +144,14 @@ struct AuthView: View {
                     ProgressView()
                         .tint(Color.black)
                 }
+                if store.magicLinkSent {
+                    MagicLinkSentView(email: email)
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
+                }
             }
             .padding(18)
             .keptGlass(cornerRadius: 28, interactive: true)
+            .animation(.spring(response: 0.42, dampingFraction: 0.72), value: store.magicLinkSent)
 
             Text(statusText)
                 .font(.footnote.weight(.medium))
@@ -153,6 +169,50 @@ struct AuthView: View {
         return store.isSupabaseConfigured
             ? "Live Supabase magic-link auth is enabled."
             : "Demo mode: add SUPABASE_URL and SUPABASE_ANON_KEY to connect the live backend."
+    }
+}
+
+struct MagicLinkSentView: View {
+    let email: String
+    @State private var animateCheck = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(KeptColor.green)
+                    .frame(width: 42, height: 42)
+                    .scaleEffect(animateCheck ? 1 : 0.72)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(.white)
+                    .scaleEffect(animateCheck ? 1 : 0.45)
+            }
+            .shadow(color: KeptColor.green.opacity(animateCheck ? 0.32 : 0), radius: 14, y: 4)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Magic link sent")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(KeptColor.ink)
+                Text(email.isEmpty ? "Check your inbox." : "Check \(email).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(KeptColor.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(KeptColor.green.opacity(0.45), lineWidth: 1)
+        )
+        .onAppear {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.58)) {
+                animateCheck = true
+            }
+        }
     }
 }
 
@@ -183,8 +243,9 @@ struct TodayView: View {
                 }
                 .padding()
             }
+            .keptScreenBreadcrumbs([.tab(.today)])
             .navigationDestination(for: Pact.self) { pact in
-                PactDetailView(pact: pact)
+                PactDetailView(pact: pact, sourceTab: .today)
             }
             .navigationTitle("Kept")
         }
@@ -212,9 +273,10 @@ struct PactsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .keptScreenBreadcrumbs([.tab(.pacts)])
             .navigationTitle("Pacts")
             .navigationDestination(for: Pact.self) { pact in
-                PactDetailView(pact: pact)
+                PactDetailView(pact: pact, sourceTab: .pacts)
             }
             .toolbar {
                 Button {
@@ -391,6 +453,7 @@ struct PactMakerView: View {
                     }
                 }
             }
+            .keptScreenBreadcrumbs([.tab(.pacts), .sheet("Forge Pact")])
             .navigationTitle("Forge Pact")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -424,7 +487,9 @@ struct PactMakerView: View {
 
 struct PactDetailView: View {
     @EnvironmentObject private var store: KeptStore
+    @EnvironmentObject private var breadcrumbTrail: KeptBreadcrumbTrail
     let pact: Pact
+    let sourceTab: KeptTab
     @State private var values: [UUID: Int] = [:]
     @State private var note = ""
     @State private var chatText = ""
@@ -530,10 +595,25 @@ struct PactDetailView: View {
                 }
             }
         }
+        .keptScreenBreadcrumbs(breadcrumbSegments)
         .onAppear {
             setupDefaultValues()
             checkForCompletion()
         }
+        .onChange(of: selectedTab) { _, _ in
+            breadcrumbTrail.update(breadcrumbSegments)
+        }
+        .onChange(of: warRoomViewMode) { _, _ in
+            breadcrumbTrail.update(breadcrumbSegments)
+        }
+    }
+
+    private var breadcrumbSegments: [KeptBreadcrumb] {
+        var segments: [KeptBreadcrumb] = [.tab(sourceTab), .pact(pact), .section(selectedTab.rawValue)]
+        if selectedTab == .warRoom {
+            segments.append(.section(warRoomViewMode.rawValue))
+        }
+        return segments
     }
 
     // MARK: - Hero Banner
@@ -2063,15 +2143,41 @@ struct FriendsView: View {
                     }
                 }
 
-                Section("Network") {
-                    ForEach(store.friends) { friend in
+                if !store.incomingFriendRequests.isEmpty {
+                    Section("Incoming requests") {
+                        ForEach(store.incomingFriendRequests) { friend in
+                            FriendRow(friend: friend) {
+                                store.acceptFriend(friend)
+                            }
+                        }
+                    }
+                }
+
+                Section("Friends") {
+                    if store.acceptedFriends.isEmpty {
+                        Text("Accepted friends will appear here.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(store.acceptedFriends) { friend in
                         FriendRow(friend: friend) {
                             store.acceptFriend(friend)
                         }
                     }
                 }
+
+                if !store.outgoingFriendRequests.isEmpty {
+                    Section("Sent requests") {
+                        ForEach(store.outgoingFriendRequests) { friend in
+                            FriendRow(friend: friend) {
+                                store.acceptFriend(friend)
+                            }
+                        }
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
+            .keptScreenBreadcrumbs([.tab(.friends)])
             .navigationTitle("Friends")
         }
     }
@@ -2079,6 +2185,7 @@ struct FriendsView: View {
 
 struct ProfileView: View {
     @EnvironmentObject private var store: KeptStore
+    @EnvironmentObject private var breadcrumbTrail: KeptBreadcrumbTrail
     @State private var activeSheet: ProfileSheet?
 
     enum ProfileSheet: Identifiable {
@@ -2110,6 +2217,7 @@ struct ProfileView: View {
                 }
                 .padding()
             }
+            .keptScreenBreadcrumbs(profileBreadcrumbs)
             .navigationTitle("Profile")
             .toolbar {
                 Button {
@@ -2126,7 +2234,23 @@ struct ProfileView: View {
                     ProfileSettingsSheet()
                 }
             }
+            .onChange(of: activeSheet) { _, _ in
+                breadcrumbTrail.update(profileBreadcrumbs)
+            }
         }
+    }
+
+    private var profileBreadcrumbs: [KeptBreadcrumb] {
+        var segments: [KeptBreadcrumb] = [.tab(.profile)]
+        switch activeSheet {
+        case .edit:
+            segments.append(.sheet("Edit Profile"))
+        case .settings:
+            segments.append(.sheet("Settings"))
+        case .none:
+            break
+        }
+        return segments
     }
 }
 
@@ -2393,6 +2517,7 @@ struct EditProfileSheet: View {
                     }
                 }
             }
+            .keptScreenBreadcrumbs([.tab(.profile), .sheet("Edit Profile")])
             .navigationTitle("Edit Profile")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2477,6 +2602,7 @@ struct ProfileSettingsSheet: View {
                     }
                 }
             }
+            .keptScreenBreadcrumbs([.tab(.profile), .sheet("Settings")])
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

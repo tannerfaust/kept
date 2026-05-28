@@ -10,11 +10,16 @@ import SwiftUI
 @main
 struct KeptApp: App {
     @StateObject private var store = KeptStore()
+    @StateObject private var breadcrumbTrail = KeptBreadcrumbTrail()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .environmentObject(breadcrumbTrail)
+                .onAppear {
+                    store.breadcrumbTrail = breadcrumbTrail
+                }
         }
     }
 }
