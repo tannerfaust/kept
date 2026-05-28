@@ -21,6 +21,7 @@ struct SupabaseConfiguration {
 
 enum SupabaseError: LocalizedError {
     case authCallbackMissingSession
+    case backend(String)
     case invalidResponse
     case missingConfiguration
     case unauthenticated
@@ -29,6 +30,8 @@ enum SupabaseError: LocalizedError {
         switch self {
         case .authCallbackMissingSession:
             "The magic link opened, but it did not include a Supabase session."
+        case .backend(let message):
+            message
         case .invalidResponse:
             "Supabase returned a response that could not be decoded."
         case .missingConfiguration:
@@ -571,7 +574,10 @@ final class SupabaseService: KeptBackendService, KeptBackendBreadcrumbCarrier {
         )
         guard let httpResponse,
               (200..<300).contains(httpResponse.statusCode) else {
-            throw SupabaseError.invalidResponse
+            if let message = SupabaseErrorMessage.message(from: data) {
+                throw SupabaseError.backend(message)
+            }
+            throw SupabaseError.backend("Supabase request failed with status \(statusCode ?? 0).")
         }
 
         if Response.self == EmptyResponse.self || data.isEmpty {
@@ -972,6 +978,20 @@ private struct PactMessageRow: Codable {
 
 private struct EmptyBody: Encodable {}
 private struct EmptyResponse: Decodable {}
+
+private struct SupabaseErrorMessage: Decodable {
+    let message: String?
+    let msg: String?
+    let hint: String?
+
+    static func message(from data: Data) -> String? {
+        guard !data.isEmpty,
+              let decoded = try? JSONDecoder().decode(SupabaseErrorMessage.self, from: data) else {
+            return nil
+        }
+        return decoded.message ?? decoded.msg ?? decoded.hint
+    }
+}
 
 extension JSONEncoder {
     static var kept: JSONEncoder {

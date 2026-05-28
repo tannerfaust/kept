@@ -14,6 +14,7 @@ final class KeptStore: ObservableObject {
     @Published var isAuthBusy = false
     @Published var hasAttemptedSessionRestore = false
     @Published var magicLinkSent = false
+    @Published var isFriendsRefreshing = false
     @Published var authStatusMessage = ""
     @Published var friendStatusMessage = ""
     @Published var friendSearchResult: UserProfile?
@@ -210,6 +211,23 @@ final class KeptStore: ObservableObject {
                 guard !Task.isCancelled else { return }
                 await self?.reloadLiveData(showNotificationOnError: false)
             }
+        }
+    }
+
+    func refreshFriends() async {
+        guard isSupabaseConfigured, let currentUser else { return }
+        isFriendsRefreshing = true
+        defer { isFriendsRefreshing = false }
+
+        do {
+            friends = try await withBackendBreadcrumb("friends.refresh", interaction: "friends.refresh") {
+                try await backend.fetchFriends(userID: currentUser.id)
+            }
+            if friendStatusMessage.hasPrefix("Refresh failed") {
+                friendStatusMessage = ""
+            }
+        } catch {
+            friendStatusMessage = "Refresh failed: \(error.localizedDescription)"
         }
     }
 
@@ -486,6 +504,7 @@ final class KeptStore: ObservableObject {
                 friendStatusMessage = "Friend request sent to \(friend.profile.displayName)."
                 addNotification(title: "Friend request sent", message: "\(friend.profile.displayName) can accept your request now.")
             }
+            await refreshFriends()
         } catch {
             friendStatusMessage = error.localizedDescription
         }
@@ -502,6 +521,7 @@ final class KeptStore: ObservableObject {
             }
             friendStatusMessage = "\(updatedFriend.profile.displayName) is now a friend."
             addNotification(title: "Friend added", message: "\(updatedFriend.profile.displayName) can now join pacts with you.")
+            await refreshFriends()
         } catch {
             friendStatusMessage = error.localizedDescription
         }

@@ -2122,6 +2122,11 @@ struct FriendsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    if store.isFriendsRefreshing {
+                        Label("Refreshing friends", systemImage: "arrow.clockwise")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                     if let profile = store.friendSearchResult {
                         HStack(spacing: 12) {
                             Avatar(symbol: profile.avatarSymbol, color: Color(hex: profile.accentColorHex), size: 36)
@@ -2179,6 +2184,20 @@ struct FriendsView: View {
             .scrollContentBackground(.hidden)
             .keptScreenBreadcrumbs([.tab(.friends)])
             .navigationTitle("Friends")
+            .toolbar {
+                Button {
+                    Task { await store.refreshFriends() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .disabled(store.isFriendsRefreshing)
+            }
+            .refreshable {
+                await store.refreshFriends()
+            }
+            .task {
+                await store.refreshFriends()
+            }
         }
     }
 }
