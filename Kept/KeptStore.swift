@@ -12,6 +12,7 @@ final class KeptStore: ObservableObject {
     @Published var pactMessages: [PactMessage] = []
     @Published var isSupabaseConfigured = SupabaseConfiguration.current.isConfigured
     @Published var isAuthBusy = false
+    @Published var hasAttemptedSessionRestore = false
     @Published var authStatusMessage = ""
     @Published var friendStatusMessage = ""
     @Published var friendSearchResult: UserProfile?
@@ -101,19 +102,27 @@ final class KeptStore: ObservableObject {
     }
 
     func restoreLiveSessionIfPossible() async {
-        guard isSupabaseConfigured, currentUser == nil else { return }
+        guard isSupabaseConfigured, currentUser == nil else {
+            hasAttemptedSessionRestore = true
+            return
+        }
         isAuthBusy = true
+        authStatusMessage = "Restoring your session..."
         defer { isAuthBusy = false }
 
         do {
             if let user = try await backend.restoreSession() {
                 currentUser = user
+                authStatusMessage = ""
                 await reloadLiveData(showNotificationOnError: true)
                 startLiveSync()
+            } else {
+                authStatusMessage = ""
             }
         } catch {
             authStatusMessage = error.localizedDescription
         }
+        hasAttemptedSessionRestore = true
     }
 
     func handleAuthCallback(_ url: URL) async {

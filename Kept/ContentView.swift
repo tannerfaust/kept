@@ -36,7 +36,11 @@ struct ContentView: View {
         ZStack {
             AppBackground()
             if store.currentUser == nil {
-                AuthView()
+                if store.isSupabaseConfigured && !store.hasAttemptedSessionRestore {
+                    RestoreSessionView()
+                } else {
+                    AuthView()
+                }
             } else {
                 TabView(selection: $tab) {
                     TodayView()
@@ -65,6 +69,20 @@ struct ContentView: View {
                 await store.handleAuthCallback(url)
             }
         }
+    }
+}
+
+struct RestoreSessionView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .tint(Color.black)
+            Text("Restoring session")
+                .font(.headline)
+                .foregroundStyle(KeptColor.ink)
+        }
+        .padding(24)
+        .keptGlass(cornerRadius: 24)
     }
 }
 
